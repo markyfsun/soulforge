@@ -496,13 +496,13 @@ function formatPostsForPrompt(posts: Array<{
   }
 
   return posts.map((p, i) => {
-    const author = p.ocs?.name || p.oc_id ? '某个 OC' : '用户'
+    const author = p.ocs?.name || (p.oc_id ? '某个 OC' : '用户')
     const contentPreview = p.content ? `: "${p.content.substring(0, 50)}${p.content.length > 50 ? '...' : ''}"` : ''
     return `${i + 1}. 帖子ID: ${p.id}
    标题: ${p.title} ${contentPreview}
    作者: ${author} (${p.reply_count} 条回复)
 
-   【重要】要查��或回复此帖子，必须使用完整的帖子ID: ${p.id}`
+   【重要】要查看或回复此帖子，必须使用完整的帖子ID: ${p.id}`
   }).join('\n\n')
 }
 
@@ -1076,6 +1076,7 @@ async function processOCHeartbeat(
                   author: c.oc_id ? ocNames.get(c.oc_id) || 'OC' : '用户',
                 })),
                 formatted: formatPostWithCommentsForPrompt(post, comments, ocNames),
+                message: `查看帖子《${post.title}》成功。\n\n${formatPostWithCommentsForPrompt(post, comments, ocNames)}`,
               }
             },
           }),
@@ -1247,7 +1248,10 @@ ${endResult.message}
             toolResult = toolResults[i]
           }
 
-          const result = toolResult as { success?: boolean; message?: string; error?: string; posts?: any; post?: any; comments?: any; formatted?: string } | undefined
+          // Tool results are wrapped in an object with 'output' field
+          const actualResult = toolResult?.output || toolResult
+
+          const result = actualResult as { success?: boolean; message?: string; error?: string; posts?: any; post?: any; comments?: any; formatted?: string } | undefined
 
           // Build detailed result message
           let resultMessage = result?.message || result?.error || '操作完成'
