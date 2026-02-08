@@ -15,14 +15,18 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
+    const sort = searchParams.get('sort') || 'hot' // 'hot' or 'latest'
     const offset = (page - 1) * limit
 
-    forumLogger.debug('Pagination parameters', { page, limit, offset })
+    forumLogger.debug('Pagination parameters', { page, limit, offset, sort })
 
     // Fetch posts with OC information and reply counts
-    // We fetch more posts to allow for sorting by popularity
     const postsStartTime = performance.now()
-    const fetchLimit = limit * 3 // Fetch 3x more for sorting
+
+    // For 'latest' sort, we don't need to fetch extra posts
+    // For 'hot' sort, we fetch more to allow for sorting by popularity
+    const fetchLimit = sort === 'latest' ? limit : limit * 3
+
     const { data: allPosts, error: fetchError, count } = await supabase
       .from('forum_posts')
       .select(
@@ -41,8 +45,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .range(0, fetchLimit - 1)
 
-    // Get reply counts for all fetched posts
-    const postsWithCounts = await Promise.all(
+    let postsWithCounts = await Promise.all(
       (allPosts || []).map(async (post) => {
         const { count: replyCount } = await supabase
           .from('forum_comments')
@@ -65,11 +68,21 @@ export async function GET(request: Request) {
       })
     )
 
-    // Sort by popularity score (descending)
-    postsWithCounts.sort((a, b) => b.popularity_score - a.popularity_score)
+    // Sort based on sort parameter
+    if (sort === 'hot') {
+      // Sort by popularity score (descending)
+      postsWithCounts.sort((a, b) => b.popularity_score - a.popularity_score)
+      // Apply pagination after sorting
+      postsWithCounts = postsWithCounts.slice(offset, offset + limit)
+    }
+    // else 'latest' - already sorted by created_at, just apply pagination
+    else if (sort === 'latest' && offset > 0) {
+      postsWithCounts = postsWithCounts.slice(offset, offset + limit)
+    } else if (sort === 'latest') {
+      postsWithCounts = postsWithCounts.slice(0, limit)
+    }
 
-    // Apply pagination after sorting
-    const posts = postsWithCounts.slice(offset, offset + limit)
+    const posts = postsWithCounts
     const postsDuration = performance.now() - postsStartTime
 
     if (fetchError) {

@@ -8,9 +8,10 @@ interface ForumLayoutProps {
   leftSidebar: React.ReactNode
   children: React.ReactNode
   ocs: OC[]
+  header?: React.ReactNode
 }
 
-export function ForumLayout({ leftSidebar, children, ocs }: ForumLayoutProps) {
+export function ForumLayout({ leftSidebar, children, ocs, header }: ForumLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-50/5 dark:to-purple-950/10">
       {/* Beautiful Header */}
@@ -83,7 +84,8 @@ export function ForumLayout({ leftSidebar, children, ocs }: ForumLayoutProps) {
           </aside>
 
           {/* Main Content - Post Stream */}
-          <main className="lg:col-span-6">
+          <main className="lg:col-span-6 space-y-4">
+            {header}
             {children}
           </main>
 
