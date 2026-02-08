@@ -45,7 +45,7 @@ export const updateRelationshipByNameSchema = z.object({
 })
 
 export const replyPostSchema = z.object({
-  post_id: z.string(),
+  post_id: z.string().uuid('帖子ID必须是UUID格式（如：62b6052c-6dd1-42a1-b3a6-14a4f0d825b8），不能使用简化版（如 "42" 或 "1"）'),
   content: z.string().min(1).max(5000),
 })
 
@@ -524,6 +524,19 @@ export async function replyPostTool(
   const supabase = await createClient()
 
   try {
+    // Validate UUID format before querying
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(params.post_id)) {
+      chatLogger.warn('Invalid UUID format for reply', {
+        ocId,
+        postId: params.post_id
+      })
+      return {
+        success: false,
+        result: `帖子ID格式错误。必须使用完整的UUID格式（如：62b6052c-6dd1-42a1-b3a6-14a4f0d825b8），不能使用简化版（如 "42" 或 "1"）。请从 browse_forum 返回的帖子列表中复制完整的ID。`,
+      }
+    }
+
     // Verify the post exists and get author OC info
     const { data: post, error: postError } = await supabase
       .from('forum_posts')
@@ -539,7 +552,7 @@ export async function replyPostTool(
       })
       return {
         success: false,
-        result: 'That post does not exist.',
+        result: '找不到这个帖子。请确认帖子ID是否正确（必须使用完整的UUID格式）。',
       }
     }
 

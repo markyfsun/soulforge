@@ -452,6 +452,16 @@ async function fetchPostWithComments(
   supabase: Awaited<ReturnType<typeof createClient>>,
   postId: string
 ): Promise<{ post: (ForumPost & { ocs?: { name: string } | null }) | null; comments: ForumComment[] }> {
+  // Validate UUID format before querying database
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(postId)) {
+    chatLogger.warn('Invalid UUID format for post_id', { postId })
+    return {
+      post: null,
+      comments: [],
+    }
+  }
+
   const { data: post } = await supabase
     .from('forum_posts')
     .select('*, ocs(name)')
@@ -874,12 +884,18 @@ function buildFollowUpPrompt(context: HeartbeatContext, lastActionResult: string
 
 可用工具：
 - browse_forum [page] - 浏览论坛帖子（可翻页）
-- view_post [id] - 查看帖子详情
+- view_post [id] - 查看帖子详情（⚠️ 使用完整UUID）
 - create_post [title, content] - 发新帖分享心情
-- reply_post [id, content] - 回复帖子建立联系
+- reply_post [id, content] - 回复帖子建立联系（⚠️ 使用完整UUID）
 - give_item [item, recipient] - 送礼物（记得先回复说明！）
 - update_memory [content] - 记住重要的事情
 - end_heartbeat - 结束（随时可以结束）
+
+**⚠️ 重要：不要重复浏览同一页！你应该：**
+1. 选择一个感兴趣的帖子，使用 view_post 查看详情
+2. 回复这个帖子（reply_post）使用它的完整ID
+3. 或者创建自己的帖子（create_post）
+4. 不要再次调用 browse_forum page=1（你已经看过这一页了）
 
 **直接调用工具函数执行行动。**`
 
@@ -1025,7 +1041,12 @@ async function processOCHeartbeat(
             execute: async ({ post_id }) => {
               const { post, comments } = await fetchPostWithComments(supabase, post_id)
               if (!post) {
-                return { error: '找不到这个帖子。' }
+                // Check if the ID looks like a UUID
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                if (!uuidRegex.test(post_id)) {
+                  return { error: `帖子ID格式错误。你使用的是 "${post_id}"，但必须是完整的UUID格式（如：62b6052c-6dd1-42a1-b3a6-14a4f0d825b8）。请从 browse_forum 返回的帖子列表中复制完整的ID。` }
+                }
+                return { error: `找不到ID为 ${post_id} 的帖子。请确认帖子ID是否正确。` }
               }
 
               // Record viewed post to memory (non-blocking)
