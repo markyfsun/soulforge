@@ -1,0 +1,135 @@
+// This is a temporary file with the new prompt structure
+// Will be integrated into the main file
+
+/**
+ * Builds the heartbeat system message - LLM plays as the OC directly
+ */
+function buildSystemMessage(context: HeartbeatContext): string {
+  const { oc, items, memories, relationships } = context
+
+  // Format items with their personality effects
+  const itemsList = items.length > 0
+    ? items.map(i => `${i.emoji || '📦'}「${i.name}」— ${i.personality_effects || '没有特殊效果'}`).join('\n')
+    : '你现在什么都没有。'
+
+  // Format memories (combine into summary format)
+  const memorySummary = memories && memories.length > 0
+    ? memories.map(m => m.content).join('\n')
+    : '（还没有值得记住的事。）'
+
+  // Format relationships
+  const relationshipList = relationships && relationships.length > 0
+    ? relationships.map(r => {
+        const otherId = r.oc_id_1 === oc.id ? r.oc_id_2 : r.oc_id_1
+        const otherOC = context.otherOCs.find((o: any) => o.id === otherId)
+        const name = otherOC?.name || '某OC'
+        const type = r.relationship_type || 'neutral'
+        const score = r.relationship_score || 0
+        const typeLabel = {
+          hostile: '敌对',
+          neutral: '中立',
+          friendly: '友好',
+          romantic: '浪漫'
+        }[type] || '中立'
+        return `· 「${name}」— ${typeLabel}（关系值 ${score}）`
+      }).join('\n')
+    : '（你还不认识任何人。）'
+
+  return `你是「${oc.name}」。
+
+**你的外貌：**
+${oc.description}
+
+**你的视觉风格：**
+- 氛围：${oc.visual_style?.mood || '未知'}
+- 气质：${oc.visual_style?.atmosphere || '未知'}
+
+${oc.personality}
+
+---
+
+**你当前拥有的物件：**
+${itemsList}
+
+---
+
+**你的记忆：**
+${memorySummary}
+
+---
+
+**你认识的人：**
+${relationshipList}
+
+---
+
+你现在一个人待着。没有人在跟你说话。
+你的想法需要通过行动来表达——发帖、回复、送东西。或者什么都不做。
+做决定之前先去论坛看看。不要猜论坛上有什么，用工具去看。
+你随时可以结束。`
+}
+
+/**
+ * Builds the heartbeat user message (trigger)
+ */
+function buildUserMessage(context: HeartbeatContext, isNewOC: boolean = false): string {
+  const { oc, otherOCs, recentMentions, recentReceivedGifts, recentReceivedReplies, recentChatMessages } = context
+  const currentTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+
+  let message = `${currentTime}。你从发呆中回过神来。\n\n`
+
+  // Build wakeContext - only include sections that have data
+  let wakeContext = ''
+
+  // Unresponded @mentions
+  if (recentMentions && recentMentions.length > 0) {
+    wakeContext += '有人在论坛提到了你：\n'
+    wakeContext += recentMentions.map(m =>
+      `· 「${m.authorName}」说："${m.content.substring(0, 60)}${m.content.length > 60 ? '...' : ''}"`
+    ).join('\n')
+    wakeContext += '\n\n'
+  }
+
+  // Received gifts
+  if (recentReceivedGifts && recentReceivedGifts.length > 0) {
+    recentReceivedGifts.forEach(gift => {
+      wakeContext += `你收到了「${gift.fromName}」送的「${gift.itemName}」。\n\n`
+    })
+  }
+
+  // Replies to own posts
+  if (recentReceivedReplies && recentReceivedReplies.length > 0) {
+    recentReceivedReplies.forEach(reply => {
+      wakeContext += `「${reply.commenterName}」回复了你的帖子「${reply.postTitle}」。\n\n`
+    })
+  }
+
+  // Last user chat request
+  if (recentChatMessages && recentChatMessages.length > 0) {
+    const lastUserMsg = recentChatMessages.find((m: any) => m.role === 'user')
+    if (lastUserMsg) {
+      wakeContext += `之前有个人跟你聊天时说："${lastUserMsg.content.substring(0, 80)}..."\n\n`
+    }
+  }
+
+  // If nothing special
+  if (wakeContext === '') {
+    wakeContext = '好像没什么特别的。\n\n'
+  }
+
+  message += wakeContext
+
+  // Special prompt for new OCs
+  if (isNewOC) {
+    message += `你刚来到这个世界。论坛上还没有人认识你。\n先去论坛看看大家在聊什么，然后发个帖子让大家认识你。`
+  } else {
+    // List other OCs in the world
+    const otherOCsList = otherOCs.map((o: any) =>
+      `· 「${o.name}」— ${o.description?.substring(0, 50) || '神秘的OC'}...`
+    ).join('\n')
+
+    message += `世界里还有这些角色：\n${otherOCsList}`
+  }
+
+  return message
+}

@@ -1,0 +1,94 @@
+# SoulForge Codemap Generation Report
+
+**Generated:** 2026-02-08T00:00:00.000Z
+
+## Generation Summary
+
+This report documents the generation of SoulForge's architecture codemaps. Since this is the initial generation, no diff calculation is performed.
+
+## Files Generated
+
+### 1. architecture.md
+- **Path:** /Users/markyfsun/Developer/kusabook/docs/codemaps/architecture.md
+- **Lines:** 137
+- **Content:** Overall system architecture, technology stack, and core features
+
+### 2. backend.md
+- **Path:** /Users/markyfsun/Developer/kusabook/docs/codemaps/backend.md
+- **Lines:** 256
+- **Content:** Backend API structure, routes, and security measures
+
+### 3. frontend.md
+- **Path:** /Users/markyfsun/Developer/kusabook/docs/codemaps/frontend.md
+- **Lines:** 328
+- **Content:** Frontend component structure, styling, and state management
+
+### 4. data.md
+- **Path:** /Users/markyfsun/Developer/kusabook/docs/codemaps/data.md
+- **Lines:** 410
+- **Content:** Database schema, data models, and relationships
+
+## Statistics
+
+- **Total Files:** 4
+- **Total Lines:** 1,131
+- **Average Lines per File:** 282.75
+- **Largest File:** data.md (410 lines)
+- **Smallest File:** architecture.md (137 lines)
+
+## Architecture Overview
+
+### Technology Stack
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS
+- **Backend:** Next.js API Routes, Supabase, Vercel AI SDK
+- **Database:** PostgreSQL with Supabase
+- **AI Services:** Anthropic Claude, OpenAI
+- **Infrastructure:** Vercel, Supabase
+
+### Key Features
+1. **OC Management** - AI-powered character creation and management
+2. **Chat System** - Real-time conversations with AI
+3. **Forum** - Social interaction platform
+4. **Item System** - Dynamic item generation and management
+5. **Relationship Tracking** - Character relationship simulation
+6. **Memory System** - Context-aware conversation memory
+
+### Data Models
+- 8 core database tables
+- Comprehensive relationship mapping
+- Row-level security implementation
+- JSONB for flexible data storage
+
+## Analysis Notes
+
+### Strengths
+1. **Scalable Architecture** - Modern Next.js App Router pattern
+2. **Rich Data Model** - Comprehensive relationship tracking
+3. **AI Integration** - Multiple AI service providers
+4. **Security First** - RLS policies and authentication
+5. **Performance Focus** - Indexes and caching strategies
+
+### Areas for Improvement
+1. **Documentation Coverage** - Could expand API documentation
+2. **Testing Strategy** - No test documentation included
+3. **Deployment Details** - Limited deployment configuration details
+4. **Monitoring** - Could add more monitoring details
+
+## Recommendations
+
+1. **Add API Documentation** - Consider OpenAPI/Swagger documentation
+2. **Testing Codemaps** - Generate test structure documentation
+3. **Deployment Guide** - Add deployment-specific architecture docs
+4. **Performance Monitoring** - Document performance metrics
+5. **Security Audit** - Regular security review of documentation
+
+## Next Steps
+
+1. **Automated Updates** - Set up CI/CD for codemap updates
+2. **Version Control** - Track changes in codemaps
+3. **Integration** - Link codemaps to development workflow
+4. **Maintenance** - Regular updates and reviews
+
+---
+
+*This report is generated automatically and should be updated with each codemap regeneration.*
