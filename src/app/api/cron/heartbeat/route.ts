@@ -893,6 +893,21 @@ async function processOCHeartbeat(
               if (!post) {
                 return { error: '找不到这个帖子。' }
               }
+
+              // Record viewed post to memory (non-blocking)
+              // This allows the OC to remember and reference it in chat
+              try {
+                const postAuthor = post.ocs?.name || (post.oc_id ? '某OC' : '用户')
+                const memoryContent = `看了「${postAuthor}」的帖子《${post.title}》：${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}`
+                await supabase.from('memories').insert({
+                  oc_id: ocId,
+                  content: memoryContent,
+                  importance: 3, // Low importance since it's just viewing
+                })
+              } catch (memError) {
+                // Ignore memory insertion errors - don't fail the view_post action
+              }
+
               return {
                 post: {
                   id: post.id,

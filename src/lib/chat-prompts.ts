@@ -76,6 +76,17 @@ ${oc.personality}
     prompt += '\n'
   }
 
+  // Add recent viewed posts - 你最近浏览过的帖子
+  const viewedPosts = memories.filter(m => m.content.includes('看了') && m.content.includes('的帖子'))
+  if (viewedPosts.length > 0) {
+    prompt += `\n**你最近浏览过的帖子：**\n`
+    prompt += viewedPosts
+      .slice(0, 5)
+      .map((m) => `- ${m.content}`)
+      .join('\n')
+    prompt += '\n'
+  }
+
   // Add items if OC has any - 这些影响 OC 的性格和对话风格
   if (items.length > 0) {
     prompt += `\n**你的物品影响：**\n`
