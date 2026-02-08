@@ -492,7 +492,7 @@ export default function ChatPage() {
     <div
       className="min-h-screen flex flex-col relative overflow-hidden"
       style={{
-        background: visualStyle?.background || 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #9333ea 100%)',
+        background: visualStyle?.background_css || 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #9333ea 100%)',
       }}
     >
       {/* Dark overlay for better contrast */}

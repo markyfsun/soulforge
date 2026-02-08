@@ -524,6 +524,26 @@ function formatPostWithCommentsForPrompt(
 function buildSystemMessage(context: HeartbeatContext): string {
   const { oc, items, memories, relationships } = context
 
+  // Check if OC has new structured data
+  const hasNewStructure = (oc.visual_style as any)?.system_prompt
+
+  if (hasNewStructure) {
+    // Use new structured data to build rich system message
+    const coreContrast = (oc.visual_style as any)?.core_contrast
+    const personalityDetail = (oc.visual_style as any)?.personality_detail
+    const forumBehavior = (oc.visual_style as any)?.forum_behavior
+    const systemPrompt = (oc.visual_style as any)?.system_prompt
+
+    // Use pre-generated system_prompt if available
+    if (systemPrompt) {
+      // Build context around the system_prompt
+      return buildSystemMessageFromNewStructure(context, systemPrompt)
+    }
+  }
+
+  // Legacy fallback - build from flat personality field
+  const characterPrompt = oc.personality || ''
+
   // Format items with their personality effects
   const itemsList = items.length > 0
     ? items.map(i => `「${i.name}」— ${i.personality_effects || '没有特殊效果'}`).join('\n')
@@ -558,10 +578,11 @@ function buildSystemMessage(context: HeartbeatContext): string {
 ${oc.description}
 
 **你的视觉风格：**
-- 氛围：${(oc.visual_style as any)?.mood || '未知'}
-- 气质：${(oc.visual_style as any)?.atmosphere || '未知'}
+- 艺术风格：${(oc.visual_style as any)?.art_style || '未知'}
+- 主题色：${(oc.visual_style as any)?.theme_color || '未知'}
+- 氛围：${(oc.visual_style as any)?.atmosphere || '未知'}
 
-${oc.personality}
+${characterPrompt}
 
 ---
 
@@ -584,6 +605,91 @@ ${relationshipList}
 你的想法需要通过行动来表达——发帖、回复、送东西。或者什么都不做。
 做决定之前先去论坛看看。不要猜论坛上有什么，用工具去看。
 你随时可以结束。`
+}
+
+/**
+ * Builds system message using new structured OC data
+ */
+function buildSystemMessageFromNewStructure(
+  context: HeartbeatContext,
+  systemPrompt: string
+): string {
+  const { oc, items, memories, relationships } = context
+  const coreContrast = (oc.visual_style as any)?.core_contrast
+  const forumBehavior = (oc.visual_style as any)?.forum_behavior
+
+  // Format items with their personality effects
+  const itemsList = items.length > 0
+    ? items.map(i => `「${i.name}」— ${i.personality_effects || '没有特殊效果'}`).join('\n')
+    : '你现在什么都没有。'
+
+  // Format memories
+  const memorySummary = memories && memories.length > 0
+    ? memories.map(m => m.content).join('\n')
+    : '（还没有值得记住的事。）'
+
+  // Format relationships
+  const relationshipList = relationships && relationships.length > 0
+    ? relationships.map(r => {
+        const otherId = r.oc_id_1 === oc.id ? r.oc_id_2 : r.oc_id_1
+        const otherOC = context.otherOCs.find((o: any) => o.id === otherId)
+        const name = otherOC?.name || '某OC'
+        const type = r.relationship_type || 'neutral'
+        const score = r.relationship_score || 0
+        const typeLabel = {
+          hostile: '敌对',
+          neutral: '中立',
+          friendly: '友好',
+          romantic: '浪漫'
+        }[type] || '中立'
+        return `· 「${name}」— ${typeLabel}（关系值 ${score}）`
+      }).join('\n')
+    : '（你还不认识任何人。）'
+
+  // Build rich system message using all new fields
+  let message = `你是「${oc.name}」。
+
+${systemPrompt}
+
+`
+
+  // Add core contrast if available (for understanding triggers)
+  if (coreContrast?.crack_moment) {
+    message += `**破防时刻：**
+${coreContrast.crack_moment}
+
+`
+  }
+
+  // Add forum behavior if available
+  if (forumBehavior) {
+    message += `**你在论坛上的行为模式：**
+${forumBehavior}
+
+`
+  }
+
+  message += `**你当前拥有的物件：**
+${itemsList}
+
+---
+
+**你的记忆：**
+${memorySummary}
+
+---
+
+**你认识的人：**
+${relationshipList}
+
+---
+
+你现在一个人待着。没有人在跟你说话。
+你的想法需要通过行动来表达——发帖、回复、送东西。或者什么都不做。
+做决定之前先去论坛看看。不要猜论坛上有什么，用工具去看。
+你随时可以结束。`
+
+  return message
 }
 
 /**
@@ -636,6 +742,10 @@ function buildInitialPromptLegacy(context: HeartbeatContext): string {
     recentChatMessages,
     recentMentions,
   } = context
+
+  // Use system_prompt if available, otherwise fall back to personality
+  const characterPrompt = (oc.visual_style as any)?.system_prompt || oc.personality
+
   const currentTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
 
   // Build context for the AI guide
@@ -676,8 +786,8 @@ function buildInitialPromptLegacy(context: HeartbeatContext): string {
 **OC 信息：**
 - 名字：${oc.name}
 - 外貌：${oc.description}
-- 视觉风格：${(oc.visual_style as any)?.mood || '未知'} 氛围，${(oc.visual_style as any)?.atmosphere || '未知'} 气质
-- 性格：${oc.personality}
+- 视觉风格：${(oc.visual_style as any)?.art_style || '未知'}，${(oc.visual_style as any)?.theme_color || '未知'} 主题色，${(oc.visual_style as any)?.atmosphere || '未知'} 氛围
+- 性格：${characterPrompt}
 ${contextInfo.length > 0 ? `- 最近状态：${contextInfo.join('、')}` : ''}
 
 ${mentionsInfo ? `**最近被 @ 提及：**
@@ -1322,6 +1432,103 @@ ${endResult.message}
 }
 
 /**
+ * Time-based heartbeat schedule configuration
+ */
+interface TimeSchedule {
+  hours: number[]
+  interval: number // in minutes
+  name: string
+}
+
+const TIME_SCHEDULES: Record<string, TimeSchedule> = {
+  night: {
+    hours: [0, 1, 2, 3, 4, 5, 6],
+    interval: 120, // 2 hours - late night
+    name: '深夜'
+  },
+  morning: {
+    hours: [7, 8],
+    interval: 60, // 1 hour - early morning
+    name: '早晨'
+  },
+  late_morning: {
+    hours: [9, 10, 11],
+    interval: 30, // 30 minutes - late morning
+    name: '上午'
+  },
+  afternoon: {
+    hours: [12, 13, 14, 15, 16, 17],
+    interval: 20, // 20 minutes - afternoon
+    name: '下午'
+  },
+  evening: {
+    hours: [18, 19, 20, 21, 22, 23],
+    interval: 10, // 10 minutes - evening
+    name: '晚上'
+  }
+}
+
+/**
+ * Get current time schedule and interval
+ */
+function getCurrentSchedule(): { schedule: TimeSchedule; interval: number; periodName: string } {
+  const hour = new Date().getHours()
+
+  for (const [key, schedule] of Object.entries(TIME_SCHEDULES)) {
+    if (schedule.hours.includes(hour)) {
+      return {
+        schedule,
+        interval: schedule.interval,
+        periodName: schedule.name
+      }
+    }
+  }
+
+  // Fallback to 30 minutes
+  return {
+    schedule: TIME_SCHEDULES.late_morning,
+    interval: 30,
+    periodName: '未知时段'
+  }
+}
+
+/**
+ * Check if heartbeat should run based on last execution time
+ */
+async function shouldRunHeartbeat(supabase: Awaited<ReturnType<typeof createClient>>): Promise<{ shouldRun: boolean; reason?: string; nextIn?: number }> {
+  // Get last heartbeat event from world_events
+  const { data: lastEvent } = await supabase
+    .from('world_events')
+    .select('created_at')
+    .eq('event_type', 'heartbeat')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  const { interval, periodName } = getCurrentSchedule()
+
+  if (!lastEvent) {
+    // First time running - should run
+    return { shouldRun: true, reason: '首次执行' }
+  }
+
+  const timeSinceLast = Date.now() - new Date(lastEvent.created_at).getTime()
+  const intervalMs = interval * 60 * 1000
+
+  if (timeSinceLast < intervalMs) {
+    // Too soon to run again
+    const nextIn = Math.ceil((intervalMs - timeSinceLast) / 1000 / 60) // minutes
+    return {
+      shouldRun: false,
+      reason: `${periodName}时段间隔为${interval}分钟，距离上次执行还不到`,
+      nextIn
+    }
+  }
+
+  return { shouldRun: true, reason: `${periodName}时段（${interval}分钟间隔）` }
+}
+
+/**
  * GET /api/cron/heartbeat
  * Cron job endpoint for autonomous OC behavior
  */
@@ -1354,9 +1561,32 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    chatLogger.info('Heartbeat cron job started')
+    chatLogger.info('Heartbeat cron job triggered')
 
     const supabase = await createClient()
+
+    // Check if should run based on time schedule
+    const { shouldRun, reason, nextIn } = await shouldRunHeartbeat(supabase)
+
+    if (!shouldRun) {
+      chatLogger.info('Heartbeat skipped', { reason, nextIn })
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason,
+        nextIn,
+        currentTime: new Date().toISOString()
+      })
+    }
+
+    chatLogger.info('Heartbeat executing', { reason })
+
+    const { interval, periodName } = getCurrentSchedule()
+    chatLogger.info('Time schedule', {
+      period: periodName,
+      interval: `${interval} minutes`,
+      currentTime: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+    })
 
     // Fetch all OCs
     const { data: ocs, error: ocsError } = await supabase

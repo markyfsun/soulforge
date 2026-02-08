@@ -19,32 +19,46 @@ export type Relationship = Database['public']['Tables']['relationships']['Row']
 
 // Application-specific types for OC generation
 export interface VisualStyle {
-  background: string
-  primaryColor: string
-  accentColor: string
-  mood: string
+  art_style: string
+  theme_color: string
+  background_css: string
   atmosphere: string
 }
 
 export interface GeneratedOC {
   name: string
   description: string
-  personality: string
+  core_contrast: {
+    surface: string
+    depth: string
+    crack_moment: string
+  }
+  appearance: string
+  personality: {
+    surface: string
+    depth: string
+    speech_fingerprint: string
+    speech_examples: string[]
+    triggers: string[]
+  }
+  forum_behavior: string
   visual_style: VisualStyle
+  danbooru_prompt: string
   items: GeneratedItem[]
   introductory_post: {
     title: string
     content: string
   }
+  system_prompt: string
 }
 
 export interface GeneratedItem {
   name: string
   description: string
   emoji: string
-  origin_story: string
   personality_effect: string
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
+  danbooru_prompt: string
 }
 
 export interface Database {

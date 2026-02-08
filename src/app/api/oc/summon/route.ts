@@ -99,11 +99,28 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Insert OC
+    // Store new structured data in visual_style JSONB
+    const visualStyleWithMetadata = {
+      ...ocData.visual_style,
+      // Store new structured fields
+      core_contrast: ocData.core_contrast,
+      appearance: ocData.appearance,
+      personality_detail: ocData.personality,
+      forum_behavior: ocData.forum_behavior,
+      danbooru_prompt: ocData.danbooru_prompt,
+      system_prompt: ocData.system_prompt?.trim() || '',
+    }
+
+    // For backward compatibility, flatten personality to string
+    const personalityString = typeof ocData.personality === 'object'
+      ? `${ocData.personality.surface}\n\n${ocData.personality.depth}\n\n说话特征：${ocData.personality.speech_fingerprint}\n\n对话示例：\n${ocData.personality.speech_examples.join('\n')}`
+      : ocData.personality || ''
+
     const insertData = {
       name: ocData.name.trim(),
-      description: ocData.description?.trim() || '',
-      personality: ocData.personality?.trim() || '',
-      visual_style: ocData.visual_style,
+      description: ocData.appearance?.trim() || ocData.description?.trim() || '',
+      personality: personalityString,
+      visual_style: visualStyleWithMetadata,
       avatar_url: `/avatars/placeholder.png`, // Placeholder initially
     }
 
@@ -147,12 +164,11 @@ export async function POST(request: NextRequest) {
       })
 
       const avatarStartTime = performance.now()
+      // Use danbooru_prompt from the generated data directly
+      // The AI now generates the Danbooru prompt as part of the OC data
+      const avatarPrompt = ocData.danbooru_prompt
       avatarUrl = await generateImage({
-        prompt: generateOCPrompt({
-          name: ocData.name,
-          description: ocData.description,
-          visual_style: ocData.visual_style,
-        }),
+        prompt: avatarPrompt,
         width: 960,
         height: 1680,
         amount: 1,
@@ -232,12 +248,8 @@ export async function POST(request: NextRequest) {
 
         const createdItem = data[0]
 
-        // Generate item image synchronously (blocking)
-        const itemPrompt = generateItemPrompt({
-          name: item.name,
-          description: item.description,
-          rarity: item.rarity,
-        })
+        // Use danbooru_prompt from the generated data directly
+        const itemPrompt = item.danbooru_prompt
         console.log('[Item Image] Starting blocking generation', {
           itemId: createdItem.id,
           itemName: item.name,

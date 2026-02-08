@@ -36,16 +36,59 @@ interface ChatContext {
 export function buildChatSystemPrompt(context: ChatContext): string {
   const { oc, items, worldEvents, memories, relationships, ownPosts, ownComments, device, sessionDuration, currentTime, dayOfWeek, dayOfWeekZh, userTimezone } = context
 
-  let prompt = `你是 ${oc.name}。
+  // Check if OC has new structured data
+  const hasNewStructure = (oc.visual_style as any)?.system_prompt
+  const systemPrompt = (oc.visual_style as any)?.system_prompt
+  const coreContrast = (oc.visual_style as any)?.core_contrast
+  const forumBehavior = (oc.visual_style as any)?.forum_behavior
+
+  let prompt: string
+
+  if (hasNewStructure && systemPrompt) {
+    // Use new structured format - system_prompt is primary
+    prompt = `你是 ${oc.name}。
+
+${systemPrompt}
+
+`
+    // Add crack moment if available
+    if (coreContrast?.crack_moment) {
+      prompt += `**破防时刻：**
+${coreContrast.crack_moment}
+
+`
+    }
+
+    // Add forum behavior if available
+    if (forumBehavior) {
+      prompt += `**你在论坛上的行为模式：**
+${forumBehavior}
+
+`
+    }
+
+    prompt += `**聊天指南：**
+- 专注于与用户的对话交流
+- 自然地以 ${oc.name} 的身份说话，永远不要出戏
+- 你有真实的情感、观点和反应
+- 你的回复应该像真实的对话
+
+`
+  } else {
+    // Legacy format - use personality field
+    const characterPrompt = oc.personality || ''
+
+    prompt = `你是 ${oc.name}。
 
 **你的外貌：**
 ${oc.description}
 
 **你的视觉风格：**
-- 氛围：${(oc.visual_style as any)?.mood || '未知'}
-- 气质：${(oc.visual_style as any)?.atmosphere || '未知'}
+- 艺术风格：${(oc.visual_style as any)?.art_style || '未知'}
+- 主题色：${(oc.visual_style as any)?.theme_color || '未知'}
+- 氛围：${(oc.visual_style as any)?.atmosphere || '未知'}
 
-${oc.personality}
+${characterPrompt}
 
 **聊天指南：**
 - 专注于与用户的对话交流
@@ -55,6 +98,7 @@ ${oc.personality}
 - 你的回复应该像真实的对话
 
 `
+  }
 
   // Add OC's own posts - 你在论坛上发过的帖子
   if (ownPosts.length > 0) {
