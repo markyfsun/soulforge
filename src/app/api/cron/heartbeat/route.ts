@@ -519,9 +519,113 @@ function formatPostWithCommentsForPrompt(
 }
 
 /**
- * Builds the initial heartbeat prompt for an OC
+ * Builds the system message - LLM plays as the OC directly
+ */
+function buildSystemMessage(context: HeartbeatContext): string {
+  const { oc, items, memories, relationships } = context
+
+  // Format items with their personality effects
+  const itemsList = items.length > 0
+    ? items.map(i => `「${i.name}」— ${i.personality_effects || '没有特殊效果'}`).join('\n')
+    : '你现在什么都没有。'
+
+  // Format memories (combine into summary format)
+  const memorySummary = memories && memories.length > 0
+    ? memories.map(m => m.content).join('\n')
+    : '（还没有值得记住的事。）'
+
+  // Format relationships
+  const relationshipList = relationships && relationships.length > 0
+    ? relationships.map(r => {
+        const otherId = r.oc_id_1 === oc.id ? r.oc_id_2 : r.oc_id_1
+        const otherOC = context.otherOCs.find((o: any) => o.id === otherId)
+        const name = otherOC?.name || '某OC'
+        const type = r.relationship_type || 'neutral'
+        const score = r.relationship_score || 0
+        const typeLabel = {
+          hostile: '敌对',
+          neutral: '中立',
+          friendly: '友好',
+          romantic: '浪漫'
+        }[type] || '中立'
+        return `· 「${name}」— ${typeLabel}（关系值 ${score}）`
+      }).join('\n')
+    : '（你还不认识任何人。）'
+
+  return `你是「${oc.name}」。
+
+**你的外貌：**
+${oc.description}
+
+**你的视觉风格：**
+- 氛围：${(oc.visual_style as any)?.mood || '未知'}
+- 气质：${(oc.visual_style as any)?.atmosphere || '未知'}
+
+${oc.personality}
+
+---
+
+**你当前拥有的物件：**
+${itemsList}
+
+---
+
+**你的记忆：**
+${memorySummary}
+
+---
+
+**你认识的人：**
+${relationshipList}
+
+---
+
+你现在一个人待着。没有人在跟你说话。
+你的想法需要通过行动来表达——发帖、回复、送东西。或者什么都不做。
+做决定之前先去论坛看看。不要猜论坛上有什么，用工具去看。
+你随时可以结束。`
+}
+
+/**
+ * Builds the user message (trigger)
+ */
+function buildUserMessage(context: HeartbeatContext, isNewOC: boolean = false): string {
+  const { oc, otherOCs, recentMentions, recentReceivedGifts, recentReceivedReplies, recentChatMessages } = context
+  const currentTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+
+  let message = `${currentTime}。你从发呆中回过神来。\n\n`
+
+  // Build wakeContext using the existing function
+  const wakeContext = buildWakeContext(context)
+  message += wakeContext
+
+  // Special prompt for new OCs
+  if (isNewOC) {
+    message += `你刚来到这个世界。论坛上还没有人认识你。\n先去论坛看看大家在聊什么，然后发个帖子让大家认识你。`
+  } else {
+    // List other OCs in the world
+    const otherOCsList = otherOCs.map((o: any) =>
+      `·「${o.name}」— ${o.description?.substring(0, 50) || '神秘的OC'}...`
+    ).join('\n')
+
+    message += `世界里还有这些角色：\n${otherOCsList}`
+  }
+
+  return message
+}
+
+/**
+ * Legacy alias for compatibility - uses new structure
  */
 function buildInitialPrompt(context: HeartbeatContext): string {
+  // Return both messages combined for backwards compatibility
+  return buildSystemMessage(context) + '\n\nUser message:\n\n' + buildUserMessage(context)
+}
+
+/**
+ * Builds the initial heartbeat prompt for an OC (LEGACY - use buildSystemMessage + buildUserMessage)
+ */
+function buildInitialPromptLegacy(context: HeartbeatContext): string {
   const {
     oc,
     items,
@@ -717,8 +821,13 @@ async function processOCHeartbeat(
     // Get OC names for comment display
     const ocNames = await getOCNames(supabase)
 
-    // Build initial prompt
-    let currentPrompt = buildInitialPrompt(context)
+    // Build system and user messages (NEW: OC plays themselves directly)
+    const systemMessage = buildSystemMessage(context)
+    const userMessage = buildUserMessage(context)
+
+    let messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+      { role: 'user', content: userMessage }
+    ]
     let round = 0
     let shouldContinue = true
 
@@ -734,16 +843,11 @@ async function processOCHeartbeat(
 
       const aiStartTime = performance.now()
 
-      // Use tool calling with the AI SDK
+      // Use tool calling with the AI SDK - NEW: system message has OC identity
       const { text, toolCalls, toolResults } = await generateText({
         model: AI_MODEL,
-        system: `你是游戏向导，负责引导OC行动。直接调用工具函数执行行动，不要只是描述或建议。`,
-        messages: [
-          {
-            role: 'user',
-            content: currentPrompt,
-          }
-        ],
+        system: systemMessage,
+        messages: messages,
         temperature: 0.85,
         tools: {
           browse_forum: tool({
@@ -898,17 +1002,20 @@ async function processOCHeartbeat(
             result: endResult.message || '需要完成实质性操作才能结束',
           })
 
-          // Build a prompt forcing them to continue
-          currentPrompt = `你是游戏向导，你还不能结束唤醒！
+          // Build a user message forcing them to continue
+          messages.push({
+            role: 'user',
+            content: `你还不能结束！
 
 ${endResult.message}
 
-**你必须先引导 ${context.oc.name} 做以下至少一件事：**
-- create_post: 发一个新帖到论坛
-- reply_post: 回复一个感兴趣的帖子
-- give_item: 送一个物品给其他 OC
+**你必须先做以下至少一件事：**
+- 发一个新帖到论坛
+- 回复一个感兴趣的帖子
+- 送一个物品给其他 OC
 
 请选择一个行动继续。`
+          })
 
           aiLogger.debug('Heartbeat end blocked, forcing continuation', {
             ocId,
@@ -1006,6 +1113,14 @@ ${endResult.message}
           )
         }
 
+        // Append assistant message to conversation history
+        // This allows the LLM to remember what happened in previous rounds
+        messages.push({
+          role: 'assistant',
+          content: text || '' // Assistant's text response (if any)
+        })
+        // Note: Tool results are automatically handled by the SDK and included in context for the next round
+
         // Build follow-up prompt
         const lastAction = actions[actions.length - 1]
         let lastActionResult = lastAction?.result || '操作完成'
@@ -1022,7 +1137,11 @@ ${endResult.message}
           lastActionResult += '\n使用 view_post 工具传入帖子ID查看详情，或使用 browse_forum { page: ' + (currentPage + 1) + ' } 查看下一页。'
         }
 
-        currentPrompt = buildFollowUpPrompt(context, lastActionResult)
+        // Build follow-up prompt as user message
+        messages.push({
+          role: 'user',
+          content: `${lastActionResult}`
+        })
       } else {
         // No tool calls - AI just talked instead of using tools
         // Don't end the heartbeat, force them to use a tool
@@ -1031,18 +1150,21 @@ ${endResult.message}
           result: text || '没有采取行动',
         })
 
-        aiLogger.debug('No tool calls, forcing tool usage', {
+        aiLogger.debug('No tool calls, gentle reminder', {
           ocId,
           ocName: context.oc.name,
           response: text,
         })
 
         // Keep gentle reminder - OC can end anytime
-        currentPrompt = `作为向导，你说：${text || '没有回应'}
+        messages.push({
+          role: 'user',
+          content: `你说：${text || '没有回应'}
 
-${context.oc.name} 想结束就调用 end_heartbeat 工具，或者继续做其他事。`
+想结束就调用 end_heartbeat，或者继续做其他事。`
+        })
 
-        // Don't break - continue to next round to force tool usage
+        // Don't break - continue to next round
       }
 
       aiLogger.debug('Heartbeat round completed', {
