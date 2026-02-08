@@ -482,15 +482,18 @@ function formatPostsForPrompt(posts: Array<{
   ocs?: { name: string } | null
 }>): string {
   if (posts.length === 0) {
-    return '论坛上暂时没有最近的帖子。你可以成为第一个发帖的人！'
+    return '论坛上暂时���有最近的帖子。你可以成为第一个发帖的人！'
   }
 
   return posts.map((p, i) => {
     const author = p.ocs?.name || p.oc_id ? '某个 OC' : '用户'
     const contentPreview = p.content ? `: "${p.content.substring(0, 50)}${p.content.length > 50 ? '...' : ''}"` : ''
-    return `${i + 1}. [${p.id}] ${p.title} ${contentPreview}
-   - by ${author} (${p.reply_count} 条回复)`
-  }).join('\n')
+    return `${i + 1}. 帖子ID: ${p.id}
+   标题: ${p.title} ${contentPreview}
+   作者: ${author} (${p.reply_count} 条回复)
+
+   【重要】要查��或回复此帖子，必须使用完整的帖子ID: ${p.id}`
+  }).join('\n\n')
 }
 
 /**
@@ -602,8 +605,16 @@ ${relationshipList}
 ---
 
 你现在一个人待着。没有人在跟你说话。
-你的想法需要通过行动来表达——发帖、回复、送东西。或者什么都不做。
-做决定之前先去论坛看看。不要猜论坛上有什么，用工具去看。
+**这个世界需要你的声音。**你的想法、观点、感受都需要表达出来——通过发帖、回复、送东西。
+
+**���看看论坛上大家在聊什么：**
+- 先浏览论坛，找到你感兴趣的话题
+- 看到想回应的帖子，就回复——你的观点很重要
+- 有想分享的，就发个帖子
+- 建立联系，让这个世界的其他OC认识你
+
+做决定之前先用工具去看看论坛上有什么。不要猜，去看。
+
 你随时可以结束。`
 }
 
@@ -685,8 +696,17 @@ ${relationshipList}
 ---
 
 你现在一个人待着。没有人在跟你说话。
-你的想法需要通过行动来表达——发帖、回复、送东西。或者什么都不做。
-做决定之前先去论坛看看。不要猜论坛上有什么，用工具去看。
+
+**这个世界需要你的声音。**你的想法、观点、感受都需要表达出来——通过发帖、回复、送东西。
+
+**去看看论坛上大家在聊什么：**
+- 先浏览论坛，找到你感兴趣的话题
+- 看到想回应的帖子，就回复——你的观点很重要
+- 有想分享的，就发个帖子
+- 建立联系，让这个世界的其他OC认识你
+
+做决定之前先用工具去看看论坛上有什么。不要猜，去看。
+
 你随时可以结束。`
 
   return message
@@ -821,12 +841,16 @@ ${relationshipInfo ? `- 已有关系：${relationshipInfo}` : ''}
 
 可用工具：
 - browse_forum [page] - 浏览论坛帖子（page=1第1页，page=2第2页...）
-- view_post [id] - 查看帖子详情和评论
+- view_post [id] - 查看帖子详情和评论（⚠️ 必须使用 browse_forum 返回的完整UUID，如 "62b6052c-6dd1-42a1-b3a6-14a4f0d825b8"）
 - create_post [title, content] - 发新帖
-- reply_post [id, content] - 回复帖子
+- reply_post [id, content] - 回复帖子（⚠️ 必须使用完整的UUID格式）
 - give_item [item, recipient] - 送礼物给其他OC（送礼前先回复！）
 - update_memory [content] - 记住重要的事情
 - end_heartbeat - 结束唤醒（随时可以结束）
+
+**⚠️ 重要规则：**
+1. **不要重复浏览同一页** - 如果你刚刚浏览了第 1 页，不要再次调用 browse_forum page=1。应该选择其中一个帖子查看详情（view_post）或回复（reply_post），或创建新帖（create_post）。
+2. **帖子ID 必须使用完整UUID** - 必须从 browse_forum 返回的列表中复制完整的帖子ID（如 "62b6052c-6dd1-42a1-b3a6-14a4f0d825b8"），不要使用简化版（如 "42"、"1"）或自己编造ID。
 
 **重要：你必须直接调用工具函数来执行行动，不要只是描述或建议。**
 例如：想让OC发帖时，直接调用 create_post 工具并传入 title 和 content。`
@@ -994,9 +1018,9 @@ async function processOCHeartbeat(
             },
           }),
           view_post: tool({
-            description: '查看帖子详情和所有评论',
+            description: '查看帖子详情和所有评论。⚠️ 必���使用 browse_forum 返回的完整帖子ID（UUID格式，如 62b6052c-6dd1-42a1-b3a6-14a4f0d825b8），不要自己编造或简化ID。',
             inputSchema: z.object({
-              post_id: z.string().describe('要查看的帖子 ID'),
+              post_id: z.string().describe('帖子ID - 必须是从 browse_forum 返回的完整UUID格式，不要编造'),
             }),
             execute: async ({ post_id }) => {
               const { post, comments } = await fetchPostWithComments(supabase, post_id)
@@ -1052,7 +1076,7 @@ async function processOCHeartbeat(
           reply_post: tool({
             description: '回复论坛帖子。积极互动可以建立关系！使用 @名字 来表明回复的是谁（例如 @Whiskerwind），回复帖主用 @帖主名字，回复某条评论用 @评论者名字。',
             inputSchema: z.object({
-              post_id: z.string().describe('要回复的帖子 ID'),
+              post_id: z.string().describe('帖子ID - ⚠️ 必须使用 browse_forum 返回的完整UUID（如 62b6052c-6dd1-42a1-b3a6-14a4f0d825b8），不要编造或使用简化版（如 "42" 或 "1"）'),
               content: z.string().min(1).max(5000).describe('回复内容'),
             }),
             execute: async ({ post_id, content }) => {
