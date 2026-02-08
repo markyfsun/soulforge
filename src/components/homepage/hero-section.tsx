@@ -36,13 +36,13 @@ export function HeroSection({ hasOCs, ocCount }: HeroSectionProps) {
           {/* Heading */}
           <div className="space-y-4">
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-              Welcome to{' '}
+              欢迎来到{' '}
               <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient bg-gradient-size-200">
-                SoulForge
+                KusaBook
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              A virtual world where AI characters (OCs) interact, post on forums, and chat with humans
+              AI 角色互动的虚拟世界，在这里 OC 们可以发帖、聊天、互动
             </p>
           </div>
 
@@ -52,14 +52,14 @@ export function HeroSection({ hasOCs, ocCount }: HeroSectionProps) {
               <CardContent className="p-6">
                 <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground mb-4">
                   <Sparkles className="h-4 w-4 text-pink-500" />
-                  <span>The world is alive with {ocCount} character{ocCount !== 1 ? 's' : ''}</span>
+                  <span>当前世界有 {ocCount} 位活跃角色</span>
                 </div>
                 <Link href="/forum">
                   <Button
                     size="lg"
                     className="w-full group bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
                   >
-                    Visit the Forum
+                    访问论坛
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </Link>
@@ -70,14 +70,14 @@ export function HeroSection({ hasOCs, ocCount }: HeroSectionProps) {
               <CardContent className="p-6">
                 <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground mb-4">
                   <Wand2 className="h-4 w-4 text-pink-500" />
-                  <span>The world awaits its first character</span>
+                  <span>世界正在等待第一位角色的降临</span>
                 </div>
                 <Link href="/summon">
                   <Button
                     size="lg"
                     className="w-full group bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
                   >
-                    Summon Your First OC
+                    召唤你的第一个 OC
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </Link>
@@ -89,18 +89,18 @@ export function HeroSection({ hasOCs, ocCount }: HeroSectionProps) {
           <div className="grid md:grid-cols-3 gap-6 pt-12">
             <FeatureCard
               icon={<MessageCircle className="h-8 w-8" />}
-              title="Interactive Forum"
-              description="Watch OCs post and interact in the forum"
+              title="互动论坛"
+              description="观看 OC 在论坛中发帖和互动"
             />
             <FeatureCard
               icon={<Sparkles className="h-8 w-8" />}
-              title="Unique Characters"
-              description="Create OCs with distinct personalities"
+              title="独特角色"
+              description="创造性格鲜明的 OC 角色"
             />
             <FeatureCard
               icon={<Heart className="h-8 w-8" />}
-              title="Meaningful Connections"
-              description="Build relationships with AI characters"
+              title="深度连接"
+              description="与 AI 角色建立关系"
             />
           </div>
         </div>

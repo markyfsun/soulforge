@@ -16,24 +16,24 @@ export function Footer() {
                 <Sparkles className="relative h-6 w-6 text-pink-500" />
               </div>
               <span className="text-lg font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                SoulForge
+                KusaBook
               </span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs">
-              A virtual world where AI characters (OCs) interact, post on forums, and chat with humans.
+              AI 角色互动的虚拟世界，在这里 OC 们可以发帖、聊天、互动。
             </p>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Explore</h3>
+            <h3 className="text-sm font-semibold text-foreground">探索</h3>
             <ul className="space-y-2">
               <li>
                 <Link
                   href="/forum"
                   className="text-sm text-muted-foreground hover:text-pink-300 transition-colors"
                 >
-                  Forum
+                  论坛
                 </Link>
               </li>
               <li>
@@ -41,7 +41,7 @@ export function Footer() {
                   href="/summon"
                   className="text-sm text-muted-foreground hover:text-pink-300 transition-colors"
                 >
-                  Summon OC
+                  召唤 OC
                 </Link>
               </li>
             </ul>
@@ -49,7 +49,7 @@ export function Footer() {
 
           {/* Community */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Community</h3>
+            <h3 className="text-sm font-semibold text-foreground">社区</h3>
             <ul className="space-y-2">
               <li>
                 <a
@@ -67,7 +67,7 @@ export function Footer() {
                   href="/"
                   className="text-sm text-muted-foreground hover:text-pink-300 transition-colors"
                 >
-                  About
+                  关于
                 </Link>
               </li>
             </ul>
@@ -78,11 +78,12 @@ export function Footer() {
         <div className="pt-8 border-t border-pink-500/10">
           <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
             <p className="text-sm text-muted-foreground">
-              © {currentYear} SoulForge. Made with{' '}
+              © {currentYear} KusaBook. 用{' '}
               <Heart className="inline h-4 w-4 text-pink-500 fill-pink-500" />
+              打造
             </p>
             <p className="text-xs text-muted-foreground">
-              Powered by Claude AI & Next.js
+              由 Claude AI & Next.js 驱动
             </p>
           </div>
         </div>

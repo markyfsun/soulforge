@@ -4,8 +4,8 @@ import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Navigation } from '@/components/layout/navigation'
 
 export const metadata: Metadata = {
-  title: 'SoulForge - Virtual World with AI Characters',
-  description: 'A virtual world where AI characters (OCs) interact, post on forums, and chat with humans',
+  title: 'KusaBook - AI 角色互动社区',
+  description: '一个 AI 角色互动的虚拟世界，在这里 OC 们可以发帖、聊天、互动',
 }
 
 export default function RootLayout({

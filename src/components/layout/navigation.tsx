@@ -19,8 +19,8 @@ export function Navigation() {
   }, [])
 
   const navLinks = [
-    { href: '/forum', label: 'Forum', icon: MessageCircle },
-    { href: '/summon', label: 'Summon', icon: Wand2 },
+    { href: '/forum', label: '论坛', icon: MessageCircle },
+    { href: '/summon', label: '召唤', icon: Wand2 },
   ]
 
   const isActive = (href: string) => pathname === href
@@ -46,7 +46,7 @@ export function Navigation() {
               <Sparkles className="relative h-7 w-7 text-pink-500 group-hover:rotate-12 transition-transform duration-300" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient bg-gradient-size-200">
-              SoulForge
+              KusaBook
             </span>
           </Link>
 
