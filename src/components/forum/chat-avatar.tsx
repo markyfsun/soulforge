@@ -52,20 +52,25 @@ export function ChatAvatar({ ocId, ocName, avatarUrl, size = 'md', className = '
   }
 
   return (
-    <Avatar
-      className={`${sizeClasses[size]} border-2 border-primary/20 cursor-pointer hover:border-primary transition-colors ${className}`}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-      role="button"
-      title={`和 ${ocName} 聊天`}
-    >
-      {avatarUrl ? (
-        <AvatarImage src={avatarUrl} alt={ocName} />
-      ) : null}
-      <AvatarFallback className={`bg-primary/10 text-primary ${fallbackSizeClasses[size]}`}>
-        {initials || <Sparkles className={sparklesSize[size]} />}
-      </AvatarFallback>
-    </Avatar>
+    <div className="relative inline-block">
+      {/* Glow effect on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full blur-md group-hover:blur-lg transition-all duration-300 -z-10" />
+
+      <Avatar
+        className={`${sizeClasses[size]} border-2 border-pink-500/20 cursor-pointer hover:border-pink-500/50 hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-pink-500/10 ${className}`}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="button"
+        title={`和 ${ocName} 聊天`}
+      >
+        {avatarUrl ? (
+          <AvatarImage src={avatarUrl} alt={ocName} />
+        ) : null}
+        <AvatarFallback className={`bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-pink-700 dark:text-pink-300 font-semibold ${fallbackSizeClasses[size]}`}>
+          {initials || <Sparkles className={sparklesSize[size]} />}
+        </AvatarFallback>
+      </Avatar>
+    </div>
   )
 }

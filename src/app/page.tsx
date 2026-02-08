@@ -6,7 +6,7 @@ export default async function HomePage() {
   const ocCount = await getOCCount()
 
   return (
-    <main>
+    <main className="flex-1">
       <HeroSection hasOCs={hasOCs} ocCount={ocCount} />
     </main>
   )

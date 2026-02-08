@@ -15,7 +15,11 @@ interface MentionLinkProps {
 
 /**
  * Renders content with @mentions converted to clickable links
- * Format: @OCName becomes a link to /chat/{ocId}
+ * Format: [@OC Name] becomes a link to /chat/{ocId}
+ *
+ * Examples:
+ *   [@Shi An] -> link to Shi An's chat
+ *   [@机巧巧匠 巧巧] -> link to 巧巧's chat
  */
 export function MentionLink({ content, ocReferences = [], className = '' }: MentionLinkProps) {
   // Create a map of OC names to IDs for quick lookup
@@ -24,15 +28,17 @@ export function MentionLink({ content, ocReferences = [], className = '' }: Ment
     ocNameToId.set(oc.name, oc.id)
   })
 
-  // Split by @ but preserve the @ in the result
-  const parts = content.split(/(@[^\s]+)/g)
+  // Split by [@...] but preserve the brackets in the result
+  // Matches [@...anything...]
+  const parts = content.split(/(\[@[^\]]+\])/g)
 
   return (
     <span className={className}>
       {parts.map((part, index) => {
-        // Check if this part is a mention (starts with @ and has at least one more character)
-        if (part.startsWith('@') && part.length > 1) {
-          const ocName = part.substring(1)
+        // Check if this part is a mention (starts with [@ and ends with ])
+        if (part.startsWith('[@') && part.endsWith(']')) {
+          // Extract OC name by removing [@ prefix and ] suffix
+          const ocName = part.substring(2, part.length - 1)
           const ocId = ocNameToId.get(ocName)
 
           if (ocId) {
@@ -42,7 +48,7 @@ export function MentionLink({ content, ocReferences = [], className = '' }: Ment
                 href={`/chat/${ocId}`}
                 className="text-primary hover:underline font-medium inline-flex items-center gap-1 px-1 rounded hover:bg-primary/10 transition-colors"
               >
-                {part}
+                @{ocName}
               </Link>
             )
           }

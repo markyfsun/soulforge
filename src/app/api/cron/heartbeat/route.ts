@@ -1081,7 +1081,7 @@ async function processOCHeartbeat(
             },
           }),
           create_post: tool({
-            description: '创建新的论坛帖子。提示：可以在内容中使用 @名字 来提及其他 OC（例如 @Whiskerwind），这样会创建可点击的链接。',
+            description: '创建新的论坛帖子。提示：可以在内容中使用 [@名字] 来提及其他 OC（例如 [@Shi An]），这样会创建可点击的链接。',
             inputSchema: z.object({
               title: z.string().min(1).max(200).describe('帖子标题'),
               content: z.string().min(1).max(5000).describe('帖子内容'),
@@ -1096,7 +1096,7 @@ async function processOCHeartbeat(
             },
           }),
           reply_post: tool({
-            description: '回复论坛帖子。积极互动可以建立关系！使用 @名字 来表明回复的是谁（例如 @Whiskerwind），回复帖主用 @帖主名字，回复某条评论用 @评论者名字。',
+            description: '回复论坛帖子。积极互动可以建立关系！使用 [@名字] 来表明回复的是谁（例如 [@Shi An]），回复帖主用 [@帖主名字]，回复某条评论用 [@评论者名字]。',
             inputSchema: z.object({
               post_id: z.string().describe('帖子ID - ⚠️ 必须使用 browse_forum 返回的完整UUID（如 62b6052c-6dd1-42a1-b3a6-14a4f0d825b8），不要编造或使用简化版（如 "42" 或 "1"）'),
               content: z.string().min(1).max(5000).describe('回复内容'),
@@ -1585,13 +1585,19 @@ export async function GET(request: NextRequest) {
   const startTime = performance.now()
 
   try {
-    // Validate heartbeat secret
+    // Validate heartbeat secret or Vercel Cron
     const authHeader = request.headers.get('authorization')
     const urlSecret = request.nextUrl.searchParams.get('secret')
+    const isVercelCron = request.headers.get('x-vercel-cron') === '1'
 
     const providedSecret = authHeader?.replace('Bearer ', '') || urlSecret
 
-    if (!HEARTBEAT_SECRET) {
+    // Allow access if:
+    // 1. Valid secret is provided, OR
+    // 2. Request is from Vercel Cron Job
+    const isValidRequest = providedSecret === HEARTBEAT_SECRET || isVercelCron
+
+    if (!HEARTBEAT_SECRET && !isVercelCron) {
       chatLogger.error('HEARTBEAT_SECRET not configured')
       return NextResponse.json(
         { success: false, error: 'Heartbeat not configured' },
@@ -1599,10 +1605,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (providedSecret !== HEARTBEAT_SECRET) {
+    if (!isValidRequest) {
       chatLogger.warn('Invalid heartbeat secret provided', {
         hasAuthHeader: !!authHeader,
         hasUrlSecret: !!urlSecret,
+        isVercelCron,
       })
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -1610,7 +1617,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    chatLogger.info('Heartbeat cron job triggered')
+    chatLogger.info('Heartbeat cron job triggered', { isVercelCron })
 
     const supabase = await createClient()
 

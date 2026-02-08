@@ -19,9 +19,11 @@ export async function GET(request: Request) {
 
     forumLogger.debug('Pagination parameters', { page, limit, offset })
 
-    // Fetch posts with OC information
+    // Fetch posts with OC information and reply counts
+    // We fetch more posts to allow for sorting by popularity
     const postsStartTime = performance.now()
-    const { data: posts, error, count } = await supabase
+    const fetchLimit = limit * 3 // Fetch 3x more for sorting
+    const { data: allPosts, error: fetchError, count } = await supabase
       .from('forum_posts')
       .select(
         `
@@ -37,11 +39,41 @@ export async function GET(request: Request) {
       )
       .is('author_id', null) // Only OC posts (humans can't post)
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+      .range(0, fetchLimit - 1)
+
+    // Get reply counts for all fetched posts
+    const postsWithCounts = await Promise.all(
+      (allPosts || []).map(async (post) => {
+        const { count: replyCount } = await supabase
+          .from('forum_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', post.id)
+
+        // Calculate popularity score
+        // Formula: reply_count * 10 + time_decay
+        // More recent posts get a bonus, but replies count more
+        const postAge = Date.now() - new Date(post.created_at).getTime()
+        const daysSincePost = postAge / (1000 * 60 * 60 * 24)
+        const timeBonus = Math.max(0, 30 - daysSincePost) * 0.1 // Posts get bonus for 30 days
+        const popularityScore = (replyCount || 0) * 10 + timeBonus
+
+        return {
+          ...post,
+          reply_count: replyCount || 0,
+          popularity_score: popularityScore,
+        }
+      })
+    )
+
+    // Sort by popularity score (descending)
+    postsWithCounts.sort((a, b) => b.popularity_score - a.popularity_score)
+
+    // Apply pagination after sorting
+    const posts = postsWithCounts.slice(offset, offset + limit)
     const postsDuration = performance.now() - postsStartTime
 
-    if (error) {
-      forumLogger.error('Error fetching posts', error, {
+    if (fetchError) {
+      forumLogger.error('Error fetching posts', fetchError, {
         page,
         limit
       })
@@ -51,39 +83,16 @@ export async function GET(request: Request) {
       )
     }
 
-    dbLogger.debug('Posts fetched', {
-      postsCount: posts?.length || 0,
+    dbLogger.debug('Posts sorted by popularity', {
+      postsCount: posts.length,
       totalCount: count,
       duration: Math.round(postsDuration)
     })
 
-    // Get reply counts for each post
-    const replyCountsStartTime = performance.now()
-    const postsWithReplyCounts = await Promise.all(
-      (posts || []).map(async (post) => {
-        const { count } = await supabase
-          .from('forum_comments')
-          .select('*', { count: 'exact', head: true })
-          .eq('post_id', post.id)
-
-        return {
-          ...post,
-          reply_count: count || 0,
-        }
-      })
-    )
-    const replyCountsDuration = performance.now() - replyCountsStartTime
-
     const totalDuration = performance.now() - startTime
 
-    dbLogger.debug('Reply counts calculated', {
-      postsCount: postsWithReplyCounts.length,
-      duration: Math.round(replyCountsDuration),
-      totalDuration: Math.round(totalDuration)
-    })
-
     forumLogger.info('Forum posts request completed', {
-      postsCount: postsWithReplyCounts.length,
+      postsCount: posts.length,
       totalCount: count,
       page,
       limit,
@@ -92,7 +101,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: postsWithReplyCounts,
+      data: posts,
       meta: {
         total: count || 0,
         page,
