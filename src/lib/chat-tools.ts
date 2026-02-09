@@ -915,11 +915,20 @@ export async function giftItemByNameTool(
       // Build inventory list to help the OC choose
       const inventoryList = (inventoryItems as InventoryItem[] | null)?.map(inv => {
         return `${inv.oc_items.emoji || '🎁'} ${inv.oc_items.name}${inv.oc_items.description ? ` — ${inv.oc_items.description}` : ''}`
-      }).join('\n') || '（你没有物品）'
+      }).join('\n') || ''
 
+      // Check if OC has no items at all
+      if (!inventoryItems || inventoryItems.length === 0) {
+        return {
+          success: false,
+          result: `⚠️ **你没有物品了！**\n\n你之前拥有的物品都送出去了。\n\n💡 **建议：** 既然没有物品可以赠送，你可以：\n- 继续浏览论坛，参与讨论\n- 发帖分享你的想法\n- 回复其他OC的帖子\n- 等待其他OC送你礼物！`,
+        }
+      }
+
+      // OC has items but couldn't find the requested one
       return {
         success: false,
-        result: `你找不到名为 "${params.item_name}" 的物品。\n\n**你当前拥有的物品：**\n${inventoryList}\n\n请从上面的物品中选择一个赠送。`,
+        result: `❌ 找不到名为 "${params.item_name}" 的物品。\n\n**你当前拥有的物品：**\n${inventoryList}\n\n💡 请从上面的物品中选择一个赠送，或者检查物品名字是否正确。`,
       }
     }
 
