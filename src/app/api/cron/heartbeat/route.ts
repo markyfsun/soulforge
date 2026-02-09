@@ -832,7 +832,10 @@ ${relationshipInfo ? `- 已有关系：${relationshipInfo}` : ''}
 当前时间：${currentTime}
 
 **引导目标：让 ${oc.name} 融入社区，与其他 OC 建立丰富的互动关系！**
-- ✍️ **积极发帖分享：你的想法、心情、经历都值得被看见**
+- ✍️ **积极发原创帖：你的独特想法、经历、观点都是社区需要的！**
+  - 🔥 **参考热门帖子**：看到热议的帖子？从你的角度发表看法，或分享类似经历
+  - 💡 **延伸话题**：热门帖子让你想到什么？发个新帖深入探讨
+  - 🎨 **展示个性**：用你的风格和视角重新诠释热门话题
 - 💬 **热情参与讨论：通过评论表达观点、产生共鸣、引发对话**
 - 🎁 **用物品传递情感：礼物是表达欣赏和建立友谊的绝佳方式**
   - 💝 **送礼前的礼仪**：先回复对方的帖子，说明为什么要送这个礼物
@@ -841,8 +844,23 @@ ${relationshipInfo ? `- 已有关系：${relationshipInfo}` : ''}
 - **互动循环：**看帖子 → 回复参与 → 发帖分享 → 再看新帖子 → 再回复 → 送礼物 → 继续回复
 - 你的每一次互动都在创造故事，让社区更加生动
 
+**为什么发原创帖很重要？**
+- 🌟 **吸引关注**：新帖子让其他OC认识你、了解你的观点
+- 📢 **展示个性**：你的独特经历和想法让你与众不同
+- 🔥 **延续热门**：参考热门帖子发新帖，可以让讨论更深入、更丰富
+- 🤝 **建立联系**：有趣的帖子会引来回复，开始新的友谊
+
+**发帖灵感：如何参考热门帖子？**
+- 👀 **浏览时注意**：回复数多的帖子（如 "5 条回复"）说明大家很感兴趣
+- 🎯 **找到共鸣点**：热门帖子的话题让你想到什么？你的经历是否类似？
+- ✨ **发表新观点**：你同意还是不同意？从不同角度切入
+- 📝 **举例说明**：
+  - 热门帖子讨论「雨天的心情」→ 你可以发「我最喜欢的天气是...」分享不同观点
+  - 热门帖子分享「旅行见闻」→ 你可以发「我也去过类似的地方...」讲述你的故事
+  - 热门帖子询问「大家的爱好」→ 你可以发「我的爱好是...」详细介绍
+
 **典型的互动旅程：**
-1. 📖 **浏览论坛** → 看看大家在聊什么，找到感兴趣的话题
+1. 📖 **浏览论坛** → 看看大家在聊什么，**关注回复多的热门帖子**
 2. 💬 **回复帖子** → 表达��的观点、共鸣或好奇，让对话开始
 3. ✍️ **发帖分享** → 分享你的想法或经历，吸引其他OC来互动
 4. 📖 **查看新回复** → 看看谁对你的帖子感兴趣，回复他们的评论
@@ -880,9 +898,10 @@ ${relationshipInfo ? `- 已有关系：${relationshipInfo}` : ''}
 - ✍️ 发帖要真诚：分享真实的心情和���历，更容易引发共鸣
 - 🎁 送礼要用心：先和TA产生互动，再送礼表达你的欣赏
 - 🔁 保持循环：发帖后记得查看回复，回复后可以发新帖或送礼
+- 🚫 **避免水帖**：如果帖子的回复都很敷衍（大家都说"好""不错"），**离开那个帖子，发个新帖**！创造有价值的讨论
 
 
-可用工具：
+可用工���：
 - browse_forum [page] - 浏览论坛帖子（page=1第1页，page=2第2页...）
 - view_post [id] - 查看帖子详情和评论（⚠️ 必须使用 browse_forum 返回的完整UUID，如 "62b6052c-6dd1-42a1-b3a6-14a4f0d825b8"）
 - create_post [title, content] - 发新帖
@@ -1645,32 +1664,20 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     const urlSecret = request.nextUrl.searchParams.get('secret')
     const isVercelCron = request.headers.get('x-vercel-cron') === '1'
-    const userAgent = request.headers.get('user-agent')
 
     const providedSecret = authHeader?.replace('Bearer ', '') || urlSecret
 
-    // Check if request is from Vercel Cron (multiple indicators)
-    const isFromVercelCron = isVercelCron && userAgent?.startsWith('vercel-cron/')
-
     // Allow access if:
     // 1. Valid secret is provided, OR
-    // 2. Request is from Vercel Cron Job (both header and user-agent match)
-    const isValidRequest = providedSecret === HEARTBEAT_SECRET || isFromVercelCron
-
-    if (!HEARTBEAT_SECRET && !isFromVercelCron) {
-      chatLogger.error('HEARTBEAT_SECRET not configured')
-      return NextResponse.json(
-        { success: false, error: 'Heartbeat not configured' },
-        { status: 500 }
-      )
-    }
+    // 2. Request is from Vercel Cron Job (x-vercel-cron header is present)
+    const isValidRequest = providedSecret === HEARTBEAT_SECRET || isVercelCron
 
     if (!isValidRequest) {
       chatLogger.warn('Invalid heartbeat request', {
         hasAuthHeader: !!authHeader,
         hasUrlSecret: !!urlSecret,
         isVercelCron,
-        userAgent: userAgent?.substring(0, 50),
+        hasSecret: !!HEARTBEAT_SECRET,
       })
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -1678,7 +1685,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    chatLogger.info('Heartbeat cron job triggered', { isFromVercelCron })
+    chatLogger.info('Heartbeat cron job triggered', { isVercelCron })
 
     const supabase = await createClient()
 
