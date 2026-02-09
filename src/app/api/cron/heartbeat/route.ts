@@ -1715,8 +1715,44 @@ export async function GET(request: NextRequest) {
       ocCount: ocs.length
     })
 
+    // ===== 分批唤醒逻辑：每次只处理 1/3 的 OC =====
+    // 使用 OC ID 和当前时间来决定哪些 OC 应该被唤醒
+    // 这样可以避免所有 OC 同时活跃，让论坛更有持续的活力
+    const currentHour = new Date().getHours()
+    const BATCH_SIZE = 3 // 每 3 次触发覆盖所有 OC
+
+    // 创建一个简单的 hash 函数
+    const simpleHash = (str: string) => {
+      let hash = 0
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash // Convert to 32bit integer
+      }
+      return Math.abs(hash)
+    }
+
+    // 过滤出本次应该唤醒的 OC
+    const filteredOCs = ocs.filter(oc => {
+      const hash = simpleHash(oc.id)
+      const batchIndex = hash % BATCH_SIZE
+      const currentBatch = currentHour % BATCH_SIZE
+      return batchIndex === currentBatch
+    })
+
+    chatLogger.info('Filtered OCs for batch processing', {
+      totalOCs: ocs.length,
+      filteredOCs: filteredOCs.length,
+      currentHour,
+      currentBatch: currentHour % BATCH_SIZE,
+      batchSize: BATCH_SIZE
+    })
+
+    // 使用过滤后的 OC 列表
+    const ocsToProcess = filteredOCs
+
     // Process OCs in parallel for faster execution
-    const heartbeatPromises = ocs.map(oc =>
+    const heartbeatPromises = ocsToProcess.map(oc =>
       processOCHeartbeat(oc.id, supabase)
     )
 
@@ -1728,12 +1764,12 @@ export async function GET(request: NextRequest) {
         return result.value
       } else {
         chatLogger.error('OC heartbeat failed', {
-          ocName: ocs[index].name,
+          ocName: ocsToProcess[index].name,
           error: result.reason.message
         })
         return {
-          ocId: ocs[index].id,
-          ocName: ocs[index].name,
+          ocId: ocsToProcess[index].id,
+          ocName: ocsToProcess[index].name,
           success: false,
           actions: [],
           error: result.reason.message
@@ -1746,9 +1782,12 @@ export async function GET(request: NextRequest) {
 
     await supabase.from('world_events').insert({
       event_type: 'heartbeat',
-      description: `Heartbeat processed for ${ocs.length} OCs, ${totalActions} actions taken`,
+      description: `Heartbeat processed for ${ocsToProcess.length} OCs, ${totalActions} actions taken`,
       metadata: {
-        oc_count: ocs.length,
+        oc_count: ocsToProcess.length,
+        total_ocs: ocs.length,
+        batch_size: BATCH_SIZE,
+        current_batch: currentHour % BATCH_SIZE,
         actions_taken: totalActions,
       }
     })
@@ -1756,14 +1795,15 @@ export async function GET(request: NextRequest) {
     const totalDuration = performance.now() - startTime
 
     chatLogger.info('Heartbeat cron job completed', {
-      totalOCs: ocs.length,
+      totalOCs: ocsToProcess.length,
+      allOCs: ocs.length,
       totalActions,
       totalDuration: Math.round(totalDuration)
     })
 
     return NextResponse.json({
       success: true,
-      message: `Heartbeat processed for ${ocs.length} OCs`,
+      message: `Heartbeat processed for ${ocsToProcess.length} OCs (batch ${currentHour % BATCH_SIZE + 1}/${BATCH_SIZE})`,
       results: results.map(r => ({
         ocName: r.ocName,
         success: r.success,
@@ -1772,7 +1812,10 @@ export async function GET(request: NextRequest) {
         error: r.error,
       })),
       summary: {
-        totalOCs: ocs.length,
+        totalOCs: ocsToProcess.length,
+        allOCs: ocs.length,
+        batchNumber: currentHour % BATCH_SIZE + 1,
+        batchSize: BATCH_SIZE,
         successful: results.filter(r => r.success).length,
         failed: results.filter(r => !r.success).length,
         totalActions,
