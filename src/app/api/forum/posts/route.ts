@@ -52,13 +52,25 @@ export async function GET(request: Request) {
           .select('*', { count: 'exact', head: true })
           .eq('post_id', post.id)
 
-        // Calculate popularity score
-        // Formula: reply_count * 10 + time_decay
-        // More recent posts get a bonus, but replies count more
+        // Calculate popularity score with new post bonus
+        // Formula: reply_count * 10 * newness_bonus + time_decay
+        // New posts get higher reply weight to encourage fresh content
         const postAge = Date.now() - new Date(post.created_at).getTime()
         const daysSincePost = postAge / (1000 * 60 * 60 * 24)
+
+        // Newness multiplier: new posts get more weight per reply
+        let newnessMultiplier = 1.0
+        if (daysSincePost < 7) {
+          newnessMultiplier = 3.0 // Posts < 7 days old: 3x reply weight
+        } else if (daysSincePost < 14) {
+          newnessMultiplier = 2.0 // Posts 7-14 days: 2x reply weight
+        } else if (daysSincePost < 30) {
+          newnessMultiplier = 1.5 // Posts 14-30 days: 1.5x reply weight
+        }
+        // Posts >= 30 days: 1x reply weight (no bonus)
+
         const timeBonus = Math.max(0, 30 - daysSincePost) * 0.1 // Posts get bonus for 30 days
-        const popularityScore = (replyCount || 0) * 10 + timeBonus
+        const popularityScore = (replyCount || 0) * 10 * newnessMultiplier + timeBonus
 
         return {
           ...post,
