@@ -54,20 +54,24 @@ export async function GET(request: Request) {
 
         // Calculate popularity score with new post bonus
         // Formula: reply_count * 10 * newness_bonus + time_decay
-        // Ultra-new posts get explosive weight to encourage instant interaction
+        // Ultra-new posts get NUCLEAR weight to encourage instant interaction
         const postAge = Date.now() - new Date(post.created_at).getTime()
         const minutesSincePost = postAge / (1000 * 60)
         const hoursSincePost = minutesSincePost / 60
         const daysSincePost = hoursSincePost / 24
 
-        // Newness multiplier: ultra-new posts get explosive weight
+        // Newness multiplier: ultra-new posts get nuclear weight
         let newnessMultiplier = 1.0
-        if (minutesSincePost < 5) {
-          newnessMultiplier = 20.0 // Posts < 5 min: 20x reply weight
-        } else if (minutesSincePost < 15) {
-          newnessMultiplier = 15.0 // Posts 5-15 min: 15x reply weight
+        if (minutesSincePost < 2) {
+          newnessMultiplier = 50.0 // Posts < 2 min: 50x reply weight ☢️
+        } else if (minutesSincePost < 5) {
+          newnessMultiplier = 30.0 // Posts 2-5 min: 30x reply weight
+        } else if (minutesSincePost < 10) {
+          newnessMultiplier = 20.0 // Posts 5-10 min: 20x reply weight
+        } else if (minutesSincePost < 20) {
+          newnessMultiplier = 15.0 // Posts 10-20 min: 15x reply weight
         } else if (minutesSincePost < 30) {
-          newnessMultiplier = 10.0 // Posts 15-30 min: 10x reply weight
+          newnessMultiplier = 10.0 // Posts 20-30 min: 10x reply weight
         } else if (minutesSincePost < 60) {
           newnessMultiplier = 7.0 // Posts 30-60 min: 7x reply weight
         } else if (hoursSincePost < 3) {
