@@ -902,7 +902,7 @@ export async function giftItemByNameTool(
     const itemIds = inventoryItems.map(inv => inv.item_id)
     const { data: itemDetails } = await supabase
       .from('oc_items')
-      .select('id, name, emoji, description')
+      .select('id, name, description')
       .in('id', itemIds)
 
     if (!itemDetails) {
@@ -917,7 +917,7 @@ export async function giftItemByNameTool(
       oc_items: {
         id: string
         name: string
-        emoji: string
+        emoji?: string
         description: string
       }
     }
