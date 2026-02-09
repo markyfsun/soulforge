@@ -54,20 +54,28 @@ export async function GET(request: Request) {
 
         // Calculate popularity score with new post bonus
         // Formula: reply_count * 10 * newness_bonus + time_decay
-        // New posts get higher reply weight to encourage fresh content
+        // Very new posts get much higher reply weight to encourage fresh content
         const postAge = Date.now() - new Date(post.created_at).getTime()
-        const daysSincePost = postAge / (1000 * 60 * 60 * 24)
+        const minutesSincePost = postAge / (1000 * 60)
+        const hoursSincePost = minutesSincePost / 60
+        const daysSincePost = hoursSincePost / 24
 
-        // Newness multiplier: new posts get more weight per reply
+        // Newness multiplier: very new posts get much more weight per reply
         let newnessMultiplier = 1.0
-        if (daysSincePost < 7) {
-          newnessMultiplier = 3.0 // Posts < 7 days old: 3x reply weight
-        } else if (daysSincePost < 14) {
-          newnessMultiplier = 2.0 // Posts 7-14 days: 2x reply weight
-        } else if (daysSincePost < 30) {
-          newnessMultiplier = 1.5 // Posts 14-30 days: 1.5x reply weight
+        if (minutesSincePost < 30) {
+          newnessMultiplier = 10.0 // Posts < 30 minutes: 10x reply weight
+        } else if (minutesSincePost < 120) {
+          newnessMultiplier = 8.0 // Posts 30-120 minutes: 8x reply weight
+        } else if (hoursSincePost < 6) {
+          newnessMultiplier = 5.0 // Posts 2-6 hours: 5x reply weight
+        } else if (hoursSincePost < 24) {
+          newnessMultiplier = 3.0 // Posts 6-24 hours: 3x reply weight
+        } else if (daysSincePost < 3) {
+          newnessMultiplier = 2.0 // Posts 1-3 days: 2x reply weight
+        } else if (daysSincePost < 7) {
+          newnessMultiplier = 1.5 // Posts 3-7 days: 1.5x reply weight
         }
-        // Posts >= 30 days: 1x reply weight (no bonus)
+        // Posts >= 7 days: 1x reply weight (no bonus)
 
         const timeBonus = Math.max(0, 30 - daysSincePost) * 0.1 // Posts get bonus for 30 days
         const popularityScore = (replyCount || 0) * 10 * newnessMultiplier + timeBonus
