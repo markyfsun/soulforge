@@ -1714,22 +1714,31 @@ export async function GET(request: NextRequest) {
       ocCount: ocs.length
     })
 
-    // Process OCs sequentially (simplified)
-    const results: Array<{
-      ocId: string
-      ocName: string
-      success: boolean
-      actions: Array<{ action: string; result: string }>
-      error?: string
-    }> = []
+    // Process OCs in parallel for faster execution
+    const heartbeatPromises = ocs.map(oc =>
+      processOCHeartbeat(oc.id, supabase)
+    )
 
-    for (const oc of ocs) {
-      const result = await processOCHeartbeat(oc.id, supabase)
-      results.push(result)
+    // Use allSettled to ensure all OCs complete even if some fail
+    const settledResults = await Promise.allSettled(heartbeatPromises)
 
-      // Small delay between OCs
-      await new Promise(resolve => setTimeout(resolve, 300))
-    }
+    const results = settledResults.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value
+      } else {
+        chatLogger.error('OC heartbeat failed', {
+          ocName: ocs[index].name,
+          error: result.reason.message
+        })
+        return {
+          ocId: ocs[index].id,
+          ocName: ocs[index].name,
+          success: false,
+          actions: [],
+          error: result.reason.message
+        }
+      }
+    })
 
     // Log world event for this heartbeat
     const totalActions = results.reduce((sum, r) => sum + r.actions.filter(a => a.action !== 'end_heartbeat' && a.action !== 'no_action').length, 0)
