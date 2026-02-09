@@ -1660,32 +1660,7 @@ export async function GET(request: NextRequest) {
   const startTime = performance.now()
 
   try {
-    // Validate heartbeat secret or Vercel Cron
-    const authHeader = request.headers.get('authorization')
-    const urlSecret = request.nextUrl.searchParams.get('secret')
-    const isVercelCron = request.headers.get('x-vercel-cron') === '1'
-
-    const providedSecret = authHeader?.replace('Bearer ', '') || urlSecret
-
-    // Allow access if:
-    // 1. Valid secret is provided, OR
-    // 2. Request is from Vercel Cron Job (x-vercel-cron header is present)
-    const isValidRequest = providedSecret === HEARTBEAT_SECRET || isVercelCron
-
-    if (!isValidRequest) {
-      chatLogger.warn('Invalid heartbeat request', {
-        hasAuthHeader: !!authHeader,
-        hasUrlSecret: !!urlSecret,
-        isVercelCron,
-        hasSecret: !!HEARTBEAT_SECRET,
-      })
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    chatLogger.info('Heartbeat cron job triggered', { isVercelCron })
+    chatLogger.info('Heartbeat cron job triggered')
 
     const supabase = await createClient()
 
