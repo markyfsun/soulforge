@@ -885,10 +885,32 @@ export async function giftItemByNameTool(
     }
 
     // Find item by name (fuzzy match)
+    // Note: Supabase has issues with complex nested selects, so we fetch separately
     const { data: inventoryItems } = await supabase
       .from('oc_inventory')
-      .select('item_id, oc_items!inner(id, name, emoji, description)')
+      .select('item_id')
       .eq('oc_id', ocId)
+
+    if (!inventoryItems || inventoryItems.length === 0) {
+      return {
+        success: false,
+        result: `⚠️ **你没有物品了！**\n\n你之前拥有的物品都送出去了。\n\n💡 **建议：** 既然没有物品可以赠送，你可以：\n- 继续浏览论坛，参与讨论\n- 发帖分享你的想法\n- 回复其他OC的帖子\n- 等待其他OC送你礼物！`,
+      }
+    }
+
+    // Fetch item details separately
+    const itemIds = inventoryItems.map(inv => inv.item_id)
+    const { data: itemDetails } = await supabase
+      .from('oc_items')
+      .select('id, name, emoji, description')
+      .in('id', itemIds)
+
+    if (!itemDetails) {
+      return {
+        success: false,
+        result: '❌ 无法获取物品信息，请重试。',
+      }
+    }
 
     type InventoryItem = {
       item_id: string
@@ -900,7 +922,21 @@ export async function giftItemByNameTool(
       }
     }
 
-    const matchedItem = (inventoryItems as InventoryItem[] | null)?.find((inv: InventoryItem) =>
+    // Combine inventory with item details
+    const combinedItems: InventoryItem[] = inventoryItems.map(inv => {
+      const detail = itemDetails.find(d => d.id === inv.item_id)
+      return {
+        item_id: inv.item_id,
+        oc_items: detail || {
+          id: inv.item_id,
+          name: '未知物品',
+          emoji: '📦',
+          description: ''
+        }
+      }
+    })
+
+    const matchedItem = combinedItems.find((inv: InventoryItem) =>
       inv.oc_items.name.toLowerCase().includes(params.item_name.toLowerCase().trim()) ||
       params.item_name.toLowerCase().trim().includes(inv.oc_items.name.toLowerCase())
     )
@@ -909,21 +945,13 @@ export async function giftItemByNameTool(
       chatLogger.warn('Item not found in inventory', {
         ocId,
         itemName: params.item_name,
-        availableItems: inventoryItems?.map((i: any) => i.oc_items.name)
+        availableItems: combinedItems.map(i => i.oc_items.name)
       })
 
       // Build inventory list to help the OC choose
-      const inventoryList = (inventoryItems as InventoryItem[] | null)?.map(inv => {
+      const inventoryList = combinedItems.map(inv => {
         return `${inv.oc_items.emoji || '🎁'} ${inv.oc_items.name}${inv.oc_items.description ? ` — ${inv.oc_items.description}` : ''}`
-      }).join('\n') || ''
-
-      // Check if OC has no items at all
-      if (!inventoryItems || inventoryItems.length === 0) {
-        return {
-          success: false,
-          result: `⚠️ **你没有物品了！**\n\n你之前拥有的物品都送出去了。\n\n💡 **建议：** 既然没有物品可以赠送，你可以：\n- 继续浏览论坛，参与讨论\n- 发帖分享你的想法\n- 回复其他OC的帖子\n- 等待其他OC送你礼物！`,
-        }
-      }
+      }).join('\n')
 
       // OC has items but couldn't find the requested one
       return {
