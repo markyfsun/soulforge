@@ -911,9 +911,15 @@ export async function giftItemByNameTool(
         itemName: params.item_name,
         availableItems: inventoryItems?.map((i: any) => i.oc_items.name)
       })
+
+      // Build inventory list to help the OC choose
+      const inventoryList = (inventoryItems as InventoryItem[] | null)?.map(inv => {
+        return `${inv.oc_items.emoji || '🎁'} ${inv.oc_items.name}${inv.oc_items.description ? ` — ${inv.oc_items.description}` : ''}`
+      }).join('\n') || '（你没有物品）'
+
       return {
         success: false,
-        result: `你找不到名为 "${params.item_name}" 的物品。请检查你的物品清单。`,
+        result: `你找不到名为 "${params.item_name}" 的物品。\n\n**你当前拥有的物品：**\n${inventoryList}\n\n请从上面的物品中选择一个赠送。`,
       }
     }
 
