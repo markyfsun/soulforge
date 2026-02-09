@@ -109,7 +109,7 @@ async function createOC(description: string): Promise<void> {
     console.log('\n🔄 Trying local development server...')
     console.log('Make sure the dev server is running: npm run dev\n')
 
-    const apiUrl = 'http://localhost:3000/api/oc/summon'
+    const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/oc/summon`
 
     try {
       const localResponse = await fetch(apiUrl, {

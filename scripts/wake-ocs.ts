@@ -101,8 +101,10 @@ async function wakeOC(oc: { id: string; name: string }, secret: string): Promise
 
   const startTime = performance.now()
 
+  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
   try {
-    const response = await fetch('http://localhost:3000/api/cron/heartbeat', {
+    const response = await fetch(`${apiUrl}/api/cron/heartbeat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

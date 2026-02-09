@@ -7,7 +7,7 @@
 
 export {} // Make this a module to avoid scope conflicts
 
-const SUMMON_API_URL = 'http://localhost:3000/api/oc/summon'
+const SUMMON_API_URL = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/oc/summon`
 
 interface OCDesign {
   name: string

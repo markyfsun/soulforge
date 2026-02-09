@@ -7,7 +7,7 @@
 
 export {} // Make this a module
 
-const PROVIDE_OCS_API_URL = 'http://localhost:3000/api/oc/summon'
+const PROVIDE_OCS_API_URL = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/oc/summon`
 
 interface ItemDesign {
   name: string
