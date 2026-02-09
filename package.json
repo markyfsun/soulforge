@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "script:clear-data": "tsx scripts/clear-all-data.ts",
     "script:create-oc": "tsx scripts/create-oc.ts",
-    "script:wake-ocs": "tsx scripts/wake-ocs.ts"
+    "script:wake-ocs": "tsx scripts/wake-ocs.ts",
+    "script:wake-ocs:parallel": "tsx scripts/wake-ocs-parallel.ts"
   },
   "keywords": [
     "kusapics",
