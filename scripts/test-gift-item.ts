@@ -159,8 +159,8 @@ async function runTests() {
       return
     }
 
-    const firstItem = inventory[0].oc_items
-    console.log(`\n📌 将测试赠送物品: ${firstItem.name}`)
+    const firstItem = (inventory[0].oc_items as any).name
+    console.log(`\n📌 将测试赠送物品: ${firstItem}`)
 
     // Test 2: Get another OC as recipient
     const { data: otherOCs } = await supabase
