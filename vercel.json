@@ -9,10 +9,5 @@
       "main": true
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/heartbeat",
-      "schedule": "*/10 * * * *"
-    }
-  ]
+  "crons": []
 }
